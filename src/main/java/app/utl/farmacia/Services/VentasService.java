@@ -1,22 +1,18 @@
 package app.utl.farmacia.Services;
 
-import app.utl.farmacia.DTO.VentasDTO;
-import app.utl.farmacia.Entities.Medicamento;
-import app.utl.farmacia.Entities.Ventas;
+import app.utl.farmacia.DTOs.VentasDTO;
 import app.utl.farmacia.Excepciones.RecursoNoEncontradoException;
 import app.utl.farmacia.Excepciones.ReglaNegocioException;
+import app.utl.farmacia.Models.Ventas;
 import app.utl.farmacia.Repositories.MedicamentoRepository;
 import app.utl.farmacia.Repositories.VentasRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
  * Capa de servicio para procesar ventas.
- * Buena práctica: usa @Transactional para que si falla algún paso, no quede inventario a medias.
+ * Modificado por: Brayan
  */
 @Service
 public class VentasService {
@@ -43,59 +39,38 @@ public class VentasService {
     }
 
     public VentasDTO obtenerPorId(Long id) {
-        Ventas venta = ventasRepository.buscarPorId(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Venta no encontrada con ID: " + id));
+        Ventas venta = buscarEntidadPorId(id);
         return convertirADTO(venta);
     }
 
-    @Transactional
-    public VentasDTO registrarVenta(VentasDTO dto) {
-        if (dto == null || dto.getClienteId() == null || dto.getMedicamentoId() == null) {
-            throw new ReglaNegocioException("El cliente y el medicamento son obligatorios.");
+    // --- Métodos de lógica agregados por Brayan ---
+
+    public double calcularTotalVenta(double precioUnitario, int cantidad) {
+        validarCantidad(cantidad);
+        if (precioUnitario <= 0) {
+            throw new ReglaNegocioException("El precio unitario debe ser mayor a 0");
         }
-        if (dto.getCantidad() == null || dto.getCantidad() <= 0) {
-            throw new ReglaNegocioException("La cantidad debe ser mayor a cero.");
+        return precioUnitario * cantidad;
+    }
+
+    public void validarCantidad(int cantidad) {
+        if (cantidad <= 0) {
+            throw new ReglaNegocioException("La cantidad de la venta debe ser mayor a 0");
         }
+    }
 
-        // 1. Verifica que el cliente exista
-        clientesService.buscarEntidadPorId(dto.getClienteId());
-
-        // 2. Verifica que el medicamento exista y tenga stock suficiente
-        Medicamento medicamento = medicamentoService.buscarEntidadPorId(dto.getMedicamentoId());
-        if (medicamento.getStock() < dto.getCantidad()) {
-            throw new ReglaNegocioException(
-                    "Stock insuficiente para '" + medicamento.getNombre() +
-                            "'. Disponible: " + medicamento.getStock()
-            );
-        }
-
-        // 3. Calcula el total en el backend y descuenta el inventario
-        BigDecimal total = medicamento.getPrecio().multiply(BigDecimal.valueOf(dto.getCantidad()));
-        int nuevoStock = medicamento.getStock() - dto.getCantidad();
-        medicamentoRepository.actualizarStock(medicamento.getId(), nuevoStock);
-
-        // 4. Registra la venta con la fecha/hora actual del servidor
-        Ventas venta = new Ventas(
-                null,
-                dto.getClienteId(),
-                dto.getMedicamentoId(),
-                dto.getCantidad(),
-                total,
-                LocalDateTime.now()
-        );
-        Ventas ventaGuardada = ventasRepository.guardar(venta);
-
-        return convertirADTO(ventaGuardada);
+    private Ventas buscarEntidadPorId(Long id) {
+        return ventasRepository.buscarPorId(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Venta no encontrada con ID: " + id));
     }
 
     private VentasDTO convertirADTO(Ventas entidad) {
-        return new VentasDTO(
-                entidad.getId(),
-                entidad.getClienteId(),
-                entidad.getMedicamentoId(),
-                entidad.getCantidad(),
-                entidad.getTotal(),
-                entidad.getFechaVenta()
-        );
+        VentasDTO dto = new VentasDTO();
+        dto.setId(entidad.getId());
+        dto.setClienteId(entidad.getClienteId());
+        dto.setMedicamentoId(entidad.getMedicamentoId());
+        dto.setCantidad(entidad.getCantidad());
+        dto.setTotal(entidad.getTotal());
+        return dto;
     }
 }
