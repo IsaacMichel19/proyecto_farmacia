@@ -44,6 +44,26 @@ public class VentasService {
         return convertirADTO(venta);
     }
 
+    // --- Método requerido por VentasController (@PostMapping) ---
+
+    public VentasDTO registrarVenta(VentasDTO dto) {
+        if (dto == null) {
+            throw new ReglaNegocioException("Los datos de la venta son obligatorios");
+        }
+        int cantidad = dto.getCantidad() != null ? dto.getCantidad() : 0;
+        validarCantidad(cantidad);
+
+        Ventas entidad = new Ventas();
+        entidad.setClienteId(dto.getClienteId());
+        entidad.setMedicamentoId(dto.getMedicamentoId());
+        entidad.setCantidad(cantidad);
+        entidad.setTotal(dto.getTotal());
+        entidad.setFechaVenta(dto.getFechaVenta());
+
+        Ventas guardada = ventasRepository.guardar(entidad);
+        return convertirADTO(guardada);
+    }
+
     // --- Métodos de lógica agregados por Brayan ---
 
     public BigDecimal calcularTotalVenta(BigDecimal precioUnitario, int cantidad) {
@@ -66,6 +86,9 @@ public class VentasService {
     }
 
     private VentasDTO convertirADTO(Ventas entidad) {
+        if (entidad == null) {
+            return null;
+        }
         VentasDTO dto = new VentasDTO();
         dto.setId(entidad.getId());
         dto.setClienteId(entidad.getClienteId());
