@@ -1,13 +1,14 @@
 package app.utl.farmacia.Services;
 
-import app.utl.farmacia.DTOs.VentasDTO;
+import app.utl.farmacia.DTO.VentasDTO;
+import app.utl.farmacia.Entities.Ventas;
 import app.utl.farmacia.Excepciones.RecursoNoEncontradoException;
 import app.utl.farmacia.Excepciones.ReglaNegocioException;
-import app.utl.farmacia.Models.Ventas;
 import app.utl.farmacia.Repositories.MedicamentoRepository;
 import app.utl.farmacia.Repositories.VentasRepository;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -45,12 +46,12 @@ public class VentasService {
 
     // --- Métodos de lógica agregados por Brayan ---
 
-    public double calcularTotalVenta(double precioUnitario, int cantidad) {
+    public BigDecimal calcularTotalVenta(BigDecimal precioUnitario, int cantidad) {
         validarCantidad(cantidad);
-        if (precioUnitario <= 0) {
+        if (precioUnitario == null || precioUnitario.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ReglaNegocioException("El precio unitario debe ser mayor a 0");
         }
-        return precioUnitario * cantidad;
+        return precioUnitario.multiply(BigDecimal.valueOf(cantidad));
     }
 
     public void validarCantidad(int cantidad) {
@@ -71,6 +72,7 @@ public class VentasService {
         dto.setMedicamentoId(entidad.getMedicamentoId());
         dto.setCantidad(entidad.getCantidad());
         dto.setTotal(entidad.getTotal());
+        dto.setFechaVenta(entidad.getFechaVenta());
         return dto;
     }
 }
